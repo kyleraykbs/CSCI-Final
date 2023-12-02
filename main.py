@@ -1,5 +1,5 @@
 from colorama import Fore, Back, Style
-import os, subprocess, json
+import os, subprocess, json, copy, sys
 
 class Object:
     def __init__(self, pixel, collideable=True):
@@ -160,92 +160,186 @@ def run_bash_script(script_path):
         print(f"Error executing Bash script: {e}")
         exit()
 
-if __name__ == "__main__":
-    os.chdir(os.path.abspath(os.path.dirname(__file__)))
+Cursor = [0,0,True]
+MainPlayerPos = [0,0]
 
-    # Verify filestructure, we do this using bash cause of the arbitrary command amount we have to hit for each language. Trust me, I would much rather do this in python.
-    run_bash_script("verify.bash")
-
-    Cursor = [0,0,True]
-    def editor(xsize, ysize, mappath):
-        editorMap = None
-        if not os.path.exists(mappath):
-            editorMap = {
-                "paint": [gen2DArray(xsize,ysize,1)],
-                "collision": gen2DArray(xsize,ysize,0),
-                "doors_vis": gen2DArray(xsize,ysize,0),
-                "doors": gen2DArray(xsize,ysize,{"isdoor":False, "mapname":"", "x":"", "y":""})
-            }
-        else:
-            with open(mappath, 'r') as file:
-                data = json.load(file)
-                editorMap = data
-            if "collision" not in editorMap: editorMap["collision"] = gen2DArray(xsize,ysize,0)
-            if "doors_vis" not in editorMap: editorMap["doors_vis"] = gen2DArray(xsize,ysize,0)
-            if "doors" not in editorMap: editorMap["doors"] = gen2DArray(xsize,ysize,{"isdoor":False, "mapname":"", "x":"", "y":""})
-
-        editingCollisions = False
-        collision_objects = {
-            0: lambda: Object(Pixel(-2, 1, " ")),
-            1: lambda: Object(Pixel(-2, 1, "╳")),
+def game(xsize, ysize, mappath, startpos=[9,5]):
+    MainPlayerPos = startpos
+    currentMap = None
+    if not os.path.exists(mappath):
+        currentMap = {
+            "paint": [gen2DArray(xsize,ysize,1)],
+            "collision": gen2DArray(xsize,ysize,0),
+            "doors_vis": gen2DArray(xsize,ysize,0),
+            "doors": gen2DArray(xsize,ysize,0)
         }
+    else:
+        with open(mappath, 'r') as file:
+            data = json.load(file)
+            currentMap = data
+        if "collision" not in currentMap: currentMap["collision"] = gen2DArray(xsize,ysize,0)
+        if "doors_vis" not in currentMap: currentMap["doors_vis"] = gen2DArray(xsize,ysize,0)
+        if "doors" not in currentMap: currentMap["doors"] = gen2DArray(xsize,ysize,0)
 
-        editingDoors = False
-        door_objects = {
-            0: lambda: Object(Pixel(-2, 1, " ")),
-            1: lambda: Object(Pixel(-2, 5, "╳")),
+    layernum = 0
+
+    def render(xsize, ysize):
+        fillScreen(xsize,ysize + 3,-1)
+
+        # Build out the map.
+        for layer in currentMap["paint"]:
+            layerScreen(layer)
+
+        # Overlays
+        if Cursor[2] == True:
+            screen[MainPlayerPos[0]][MainPlayerPos[1]].fg_color = 5
+            screen[MainPlayerPos[0]][MainPlayerPos[1]].char = "◉"
+
+        # Custom Area
+        for x in range(xsize): screen[x - 1][ysize].bg_color = 6
+        for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
+        for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
+        text(0,ysize,f"🎮:[wasd, qe, +-, cr] layer: {layernum}")
+        text(0,ysize + 1,f"")
+        text(0,ysize + 2,f"")
+        screen[xsize - 1][ysize].bg_color = -1
+
+        flipScreen(xsize,ysize + 3)
+
+    running = True
+    while running:
+        render(xsize,ysize)
+        kp = subprocess.check_output("read -n 1 keypress; echo $keypress", shell=True).decode("utf-8").strip() # 2 bash commands
+        if len(kp) < 1: kp = " "
+
+        oldpos = copy.deepcopy(MainPlayerPos)
+
+        if len(currentMap["paint"]) - 1 < layernum: currentMap["paint"].append(gen2DArray(xsize,ysize,0))
+        cursorTile = currentMap["paint"][layernum][Cursor[1]][Cursor[0]]
+        if kp == "a":
+            if MainPlayerPos[0] > 0:
+                MainPlayerPos[0] -= 1
+        elif kp == "d":
+            if MainPlayerPos[0] < xsize - 1:
+                MainPlayerPos[0] += 1
+        elif kp == "s":
+            if MainPlayerPos[1] < ysize - 1:
+                MainPlayerPos[1] += 1
+        elif kp == "w":
+            if MainPlayerPos[1] > 0:
+                MainPlayerPos[1] -= 1
+
+        if currentMap["collision"][MainPlayerPos[1]][MainPlayerPos[0]] == 1:
+            MainPlayerPos = oldpos
+        elif currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]] != 0:
+            if currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]][2]:
+                print(currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]])
+                input()
+
+def editor(xsize, ysize, mappath, selectmode=False):
+    global Cursor
+    editorMap = None
+    if not os.path.exists(mappath):
+        editorMap = {
+            "paint": [gen2DArray(xsize,ysize,1)],
+            "collision": gen2DArray(xsize,ysize,0),
+            "doors_vis": gen2DArray(xsize,ysize,0),
+            "doors": gen2DArray(xsize,ysize,0)
         }
+    else:
+        with open(mappath, 'r') as file:
+            data = json.load(file)
+            editorMap = data
+        if "collision" not in editorMap: editorMap["collision"] = gen2DArray(xsize,ysize,0)
+        if "doors_vis" not in editorMap: editorMap["doors_vis"] = gen2DArray(xsize,ysize,0)
+        if "doors" not in editorMap: editorMap["doors"] = gen2DArray(xsize,ysize,0)
 
-        layernum = 0
+    editingCollisions = False
+    collision_objects = {
+        0: lambda: Object(Pixel(-2, 1, " ")),
+        1: lambda: Object(Pixel(-2, 1, "╳")),
+    }
 
-        def render(xsize, ysize):
-            fillScreen(xsize,ysize + 3,-1)
+    editingDoors = False
+    door_objects = {
+        0: lambda: Object(Pixel(-2, 1, " ")),
+        1: lambda: Object(Pixel(-2, 5, "╳")),
+    }
 
-            # Build out the map.
-            for layer in editorMap["paint"]:
-                layerScreen(layer)
+    layernum = 0
 
-            if editingCollisions:
-                layerScreen(editorMap["collision"],objects=collision_objects)
+    def render(xsize, ysize):
+        fillScreen(xsize,ysize + 3,-1)
 
-            if editingDoors:
-                layerScreen(editorMap["doors_vis"],objects=door_objects)
+        # Build out the map.
+        for layer in editorMap["paint"]:
+            layerScreen(layer)
 
-            # Overlays
-            if Cursor[2] == True:
-                if Cursor[0] < xsize - 1:
-                    screen[Cursor[0] + 1][Cursor[1]].fg_color = 1
-                    screen[Cursor[0] + 1][Cursor[1]].char = "⇠"
-                if Cursor[0] != 0:
-                    screen[Cursor[0] - 1][Cursor[1]].fg_color = 1
-                    screen[Cursor[0] - 1][Cursor[1]].char = "⇢"
-                if Cursor[1] != 0:
-                    screen[Cursor[0]][Cursor[1] - 1].fg_color = 1
-                    screen[Cursor[0]][Cursor[1] - 1].char = "⇣"
-                if Cursor[1] < ysize - 1:
-                    screen[Cursor[0]][Cursor[1] + 1].fg_color = 1
-                    screen[Cursor[0]][Cursor[1] + 1].char = "⇡"
+        if editingCollisions:
+            layerScreen(editorMap["collision"],objects=collision_objects)
 
-            # Custom Area
-            for x in range(xsize): screen[x - 1][ysize].bg_color = 6
-            for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
-            for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
+        if editingDoors:
+            layerScreen(editorMap["doors_vis"],objects=door_objects)
+
+        # Overlays
+        if Cursor[2] == True:
+            if Cursor[0] < xsize - 1:
+                screen[Cursor[0] + 1][Cursor[1]].fg_color = 1
+                screen[Cursor[0] + 1][Cursor[1]].char = "⇠"
+            if Cursor[0] != 0:
+                screen[Cursor[0] - 1][Cursor[1]].fg_color = 1
+                screen[Cursor[0] - 1][Cursor[1]].char = "⇢"
+            if Cursor[1] != 0:
+                screen[Cursor[0]][Cursor[1] - 1].fg_color = 1
+                screen[Cursor[0]][Cursor[1] - 1].char = "⇣"
+            if Cursor[1] < ysize - 1:
+                screen[Cursor[0]][Cursor[1] + 1].fg_color = 1
+                screen[Cursor[0]][Cursor[1] + 1].char = "⇡"
+
+        # Custom Area
+        for x in range(xsize): screen[x - 1][ysize].bg_color = 6
+        for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
+        for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
+        if not selectmode:
             text(0,ysize,f"🎮:[wasd, qe, +-, cr] layer: {layernum}")
             text(0,ysize + 1,f"(c)olEdit: {editingCollisions} | X: {Cursor[0]} Y: {Cursor[1]}")
             text(0,ysize + 2,f"doo(r)Edit: {editingDoors}")
             screen[xsize - 1][ysize].bg_color = -1
+        else:
+            for x in range(xsize): screen[x - 1][ysize].bg_color = 5
+            for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 5
+            for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 5
+            text(0,ysize,f"🎮:[wasd, ENTER] layer: {layernum}")
+            text(0,ysize + 1,f"SELECT MODE!")
+            screen[xsize - 1][ysize].bg_color = -1
 
-            flipScreen(xsize,ysize + 3)
+        flipScreen(xsize,ysize + 3)
 
-        running = True
-        while running:
-            render(xsize,ysize)
-            kp = subprocess.check_output("read -n 1 keypress; echo $keypress", shell=True).decode("utf-8").strip() # 2 bash commands
-            if len(kp) < 1: kp = " "
+    running = True
+    while running:
+        render(xsize,ysize)
+        kp = subprocess.check_output("read -n 1 keypress; echo $keypress", shell=True).decode("utf-8").strip() # 2 bash commands
+        if len(kp) < 1: kp = " "
 
-            if len(editorMap["paint"]) - 1 < layernum: editorMap["paint"].append(gen2DArray(xsize,ysize,0))
-            cursorTile = editorMap["paint"][layernum][Cursor[1]][Cursor[0]]
-
+        if len(editorMap["paint"]) - 1 < layernum: editorMap["paint"].append(gen2DArray(xsize,ysize,0))
+        cursorTile = editorMap["paint"][layernum][Cursor[1]][Cursor[0]]
+ 
+        if selectmode:
+            if kp == "a":
+                if Cursor[0] > 0:
+                    Cursor[0] -= 1
+            elif kp == "d":
+                if Cursor[0] < xsize - 1:
+                    Cursor[0] += 1
+            elif kp == "s":
+                if Cursor[1] < ysize - 1:
+                    Cursor[1] += 1
+            elif kp == "w":
+                if Cursor[1] > 0:
+                    Cursor[1] -= 1
+            elif kp == " ":
+                return Cursor
+        else:
             if kp == "a":
                 if Cursor[0] > 0:
                     Cursor[0] -= 1
@@ -266,7 +360,7 @@ if __name__ == "__main__":
                     editorMap["collision"][Cursor[1]][Cursor[0]] = 0
                 elif editingDoors:
                     editorMap["doors_vis"][Cursor[1]][Cursor[0]] = 0
-                    editorMap["doors"][Cursor[1]][Cursor[0]]["isdoor"] = False
+                    editorMap["doors"][Cursor[1]][Cursor[0]] = 0
                 else:
                     if cursorTile > 0:
                         editorMap["paint"][layernum][Cursor[1]][Cursor[0]] -= 1
@@ -278,10 +372,21 @@ if __name__ == "__main__":
                 elif editingDoors:
                     print()
                     print()
-                    editorMap["doors"][Cursor[1]][Cursor[0]]["mapname"] = input("Door leads to the map named: ")
-                    editorMap["doors"][Cursor[1]][Cursor[0]]["x"] = int(input("Next map X pos: "))
-                    editorMap["doors"][Cursor[1]][Cursor[0]]["y"] = int(input("Next map Y pos: "))
-                    editorMap["doors"][Cursor[1]][Cursor[0]]["isdoor"] = True
+                    nmapname = None
+                    while nmapname == None:
+                        nmapname = "maps/" + input("Door leads to the map named: ") + ".json"
+                        if not os.path.isfile(nmapname):
+                            nmapname = None
+                            print("Map not found! Did you save?")
+                    editorMapBackup = copy.deepcopy(editorMap)
+                    cursorBackup = copy.deepcopy(Cursor)
+                    out = editor(xsize, ysize, nmapname, True)
+                    x = int(out[0])
+                    y = int(out[1])
+                    Cursor = cursorBackup
+                    editorMap = editorMapBackup
+                    isdoor = True
+                    editorMap["doors"][Cursor[1]][Cursor[0]] = [x,y,isdoor,nmapname]
                     editorMap["doors_vis"][Cursor[1]][Cursor[0]] = 1
                 else:
                     if cursorTile < len(objects) - 1:
@@ -303,4 +408,22 @@ if __name__ == "__main__":
                 editingDoors = not editingDoors
                 editingCollisions = False
 
-    editor(32,9,"maps/quad.json")
+
+
+if __name__ == "__main__":
+    os.chdir(os.path.abspath(os.path.dirname(__file__)))
+
+    # Verify filestructure, we do this using bash cause of the arbitrary command amount we have to hit for each language. Trust me, I would much rather do this in python.
+    run_bash_script("verify.bash")
+
+    if sys.argv[1] == "editor":
+        emapname = None
+        while emapname == None:
+            emapname = input("What map do you want to edit? ('e' to exit): ")
+            if emapname == "e":
+                exit()
+            emapname = "maps/" + emapname + ".json"
+            editor(32,9,emapname)
+            exit()
+    elif sys.argv[1] == "game":
+        game(32,9,"maps/quad.json")

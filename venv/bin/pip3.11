@@ -1,4 +1,4 @@
-#!/home/kyle/Projects/smol-game/venv/bin/python
+#!/home/kyle/game/CSCI-Final/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
