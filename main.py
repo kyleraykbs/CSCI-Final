@@ -49,6 +49,11 @@ objects = {
     21: lambda: Object(Pixel(-2, 0, "╝")),
     22: lambda: Object(Pixel(-2, 0, "║")),
     23: lambda: Object(Pixel(-2, 0, "═")),
+    24: lambda: Object(Pixel(-2, 4, "⊑")),
+    25: lambda: Object(Pixel(-2, 4, "⊒")),
+    26: lambda: Object(Pixel(-2, 3, "⊐")),
+    27: lambda: Object(Pixel(-2, 0, "⊂")),
+    28: lambda: Object(Pixel(-2, 0, "⊃")),
 }
 
 def intToColor(clr, fg):
@@ -160,11 +165,17 @@ def run_bash_script(script_path):
         print(f"Error executing Bash script: {e}")
         exit()
 
+def update_player_data(name, x, y, mapname, inventory=""):
+    db_file = "players.db"
+
+    update_command = f"sqlite3 {db_file} 'UPDATE players SET x={x}, y={y}, inventory=\"{inventory}\", mapname=\"{mapname}\" WHERE name=\"{name}\";'"
+
+    os.system(update_command)
+
 Cursor = [0,0,True]
 MainPlayerPos = [0,0]
 
-def game(xsize, ysize, mappath, startpos=[9,5]):
-    MainPlayerPos = startpos
+def load_map(xsize,ysize,mappath):
     currentMap = None
     if not os.path.exists(mappath):
         currentMap = {
@@ -180,8 +191,11 @@ def game(xsize, ysize, mappath, startpos=[9,5]):
         if "collision" not in currentMap: currentMap["collision"] = gen2DArray(xsize,ysize,0)
         if "doors_vis" not in currentMap: currentMap["doors_vis"] = gen2DArray(xsize,ysize,0)
         if "doors" not in currentMap: currentMap["doors"] = gen2DArray(xsize,ysize,0)
+    return currentMap
 
-    layernum = 0
+def game(xsize, ysize, mappath, startpos=[9,5],name="user"):
+    MainPlayerPos = startpos
+    currentMap = load_map(xsize,ysize,mappath)
 
     def render(xsize, ysize):
         fillScreen(xsize,ysize + 3,-1)
@@ -199,9 +213,9 @@ def game(xsize, ysize, mappath, startpos=[9,5]):
         for x in range(xsize): screen[x - 1][ysize].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
-        text(0,ysize,f"🎮:[wasd, qe, +-, cr] layer: {layernum}")
+        text(0,ysize,f"🎮:[wasd]")
         text(0,ysize + 1,f"")
-        text(0,ysize + 2,f"")
+        text(0,ysize + 2,f"Player: {name}")
         screen[xsize - 1][ysize].bg_color = -1
 
         flipScreen(xsize,ysize + 3)
@@ -214,8 +228,6 @@ def game(xsize, ysize, mappath, startpos=[9,5]):
 
         oldpos = copy.deepcopy(MainPlayerPos)
 
-        if len(currentMap["paint"]) - 1 < layernum: currentMap["paint"].append(gen2DArray(xsize,ysize,0))
-        cursorTile = currentMap["paint"][layernum][Cursor[1]][Cursor[0]]
         if kp == "a":
             if MainPlayerPos[0] > 0:
                 MainPlayerPos[0] -= 1
@@ -233,8 +245,13 @@ def game(xsize, ysize, mappath, startpos=[9,5]):
             MainPlayerPos = oldpos
         elif currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]] != 0:
             if currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]][2]:
-                print(currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]])
-                input()
+                door = currentMap["doors"][MainPlayerPos[1]][MainPlayerPos[0]]
+                currentMap = load_map(xsize,ysize,door[3])
+                mappath = door[3]
+                MainPlayerPos[0] = door[0]
+                MainPlayerPos[1] = door[1]
+
+        update_player_data(name, MainPlayerPos[0], MainPlayerPos[1], mappath, "")
 
 def editor(xsize, ysize, mappath, selectmode=False):
     global Cursor
@@ -413,9 +430,6 @@ def editor(xsize, ysize, mappath, selectmode=False):
 if __name__ == "__main__":
     os.chdir(os.path.abspath(os.path.dirname(__file__)))
 
-    # Verify filestructure, we do this using bash cause of the arbitrary command amount we have to hit for each language. Trust me, I would much rather do this in python.
-    run_bash_script("verify.bash")
-
     if sys.argv[1] == "editor":
         emapname = None
         while emapname == None:
@@ -426,4 +440,4 @@ if __name__ == "__main__":
             editor(32,9,emapname)
             exit()
     elif sys.argv[1] == "game":
-        game(32,9,"maps/quad.json")
+        game(32,9,sys.argv[5], [int(sys.argv[3]), int(sys.argv[4])], sys.argv[2])
