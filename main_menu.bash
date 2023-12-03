@@ -70,7 +70,19 @@ function display_menu {
 
 function handle_option {
   case $selected_option in
-    1) echo -e "\e[1;36mOpen Editor\e[0m"; python main.py editor; clear;;
+    1) clear; echo -e "\e[1;36mOpen Editor\e[0m";
+        echo "0. ==New Map=="
+        ls maps/*.json | awk -F/ '{print $2}' | awk -F. '{print NR ". " $1}'
+        read -p "Enter the number of the map: " choice
+        selected_map=""
+        if [ "$choice" == "0" ]; then
+            selected_map="new"
+        else
+            selected_map=$(ls maps/*.json | awk -F/ '{print $2}' | awk -F. '{print $1}' | sed -n "${choice}p")
+        fi
+
+        python main.py editor "$selected_map"
+        clear;;
     2) echo -e "\e[1;36mOpen Game\e[0m"; select_character; clear;;
     3) echo -e "\e[1;36mExit\e[0m"; exit;;
   esac

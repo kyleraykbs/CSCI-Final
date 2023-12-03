@@ -1,6 +1,7 @@
 maps_directory="maps"
 
 if [ ! -d "$maps_directory" ]; then
+    chmod u=rwx,g=,o= maps
     mkdir "$maps_directory"
 fi
 

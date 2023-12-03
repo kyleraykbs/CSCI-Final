@@ -54,6 +54,7 @@ objects = {
     26: lambda: Object(Pixel(-2, 3, "⊐")),
     27: lambda: Object(Pixel(-2, 0, "⊂")),
     28: lambda: Object(Pixel(-2, 0, "⊃")),
+    29: lambda: Object(Pixel(-2, 4, "▒")),
 }
 
 def intToColor(clr, fg):
@@ -318,9 +319,9 @@ def editor(xsize, ysize, mappath, selectmode=False):
         for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
         if not selectmode:
-            text(0,ysize,f"🎮:[wasd, qe, +-, cr] layer: {layernum}")
-            text(0,ysize + 1,f"(c)olEdit: {editingCollisions} | X: {Cursor[0]} Y: {Cursor[1]}")
-            text(0,ysize + 2,f"doo(r)Edit: {editingDoors}")
+            text(0,ysize,f"🎮:[wasd,qe,+-,cr,p] layer: {layernum}")
+            text(0,ysize + 1,f"(c)olEdit: {editingCollisions}  | X: {Cursor[0]} Y: {Cursor[1]}")
+            text(0,ysize + 2,f"doo(r)Edit: {editingDoors} | P to save")
             screen[xsize - 1][ysize].bg_color = -1
         else:
             for x in range(xsize): screen[x - 1][ysize].bg_color = 5
@@ -369,9 +370,6 @@ def editor(xsize, ysize, mappath, selectmode=False):
             elif kp == "w":
                 if Cursor[1] > 0:
                     Cursor[1] -= 1
-            elif kp == " ":
-                if cursorTile < len(objects) - 1:
-                    editorMap["collision"][layernum][Cursor[1]][Cursor[0]] += 1
             elif kp == "q":
                 if editingCollisions:
                     editorMap["collision"][Cursor[1]][Cursor[0]] = 0
@@ -433,11 +431,13 @@ if __name__ == "__main__":
     if sys.argv[1] == "editor":
         emapname = None
         while emapname == None:
-            emapname = input("What map do you want to edit? ('e' to exit): ")
+            if sys.argv[2] == "new":
+                emapname = input("Map Name ('e' to exit): ")
+            else:
+                emapname = sys.argv[2]
             if emapname == "e":
                 exit()
-            emapname = "maps/" + emapname + ".json"
-            editor(32,9,emapname)
+            editor(32,9,"maps/" + emapname + ".json")
             exit()
     elif sys.argv[1] == "game":
         game(32,9,sys.argv[5], [int(sys.argv[3]), int(sys.argv[4])], sys.argv[2])
