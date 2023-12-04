@@ -359,7 +359,7 @@ def editor(xsize, ysize, mappath, selectmode=False):
 
         if len(editorMap["paint"]) - 1 < layernum: editorMap["paint"].append(gen2DArray(xsize,ysize,0))
         cursorTile = editorMap["paint"][layernum][Cursor[1]][Cursor[0]]
- 
+
         if selectmode:
             if kp == "a":
                 if Cursor[0] > 0:

@@ -11,7 +11,7 @@ create_character() {
     inventory=""
     sqlite3 "$db_file" "INSERT INTO players (name, x, y, inventory, mapname) VALUES ('$name', $x, $y, '$inventory', '$mapname');"
     echo "Character created successfully!"
-    python main.py game "$name" $x $y "$mapname" "$inventory"
+    python3 main.py game "$name" $x $y "$mapname" "$inventory"
 }
 
 select_character() {
@@ -40,7 +40,7 @@ select_character() {
             echo "Inventory: $inventory"
             echo "Map: $mapname"
             echo "Press ENTER to start!"
-            python main.py game "$name" $x $y "$mapname" "$inventory"
+            python3 main.py game "$name" $x $y "$mapname" "$inventory"
         fi
     fi
 }
