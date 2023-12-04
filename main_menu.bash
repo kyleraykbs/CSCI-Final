@@ -82,7 +82,7 @@ function handle_option {
             selected_map=$(ls maps/*.json | awk -F/ '{print $2}' | awk -F. '{print $1}' | sed -n "${choice}p")
         fi
 
-        python main.py editor "$selected_map"
+        python3 main.py editor "$selected_map"
         clear;;
     2) echo -e "\e[1;36mOpen Game\e[0m"; select_character; clear;;
     3) perl snake.pl;;
