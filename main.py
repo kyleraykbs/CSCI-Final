@@ -1,5 +1,17 @@
 from colorama import Fore, Back, Style
 import os, subprocess, json, copy, sys
+import sys, tty, termios
+def getinp():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    if ch == "":
+        ch = " "
+    return ch
 
 class Object:
     def __init__(self, pixel, collideable=True):
@@ -214,8 +226,8 @@ def game(xsize, ysize, mappath, startpos=[9,5],name="user"):
         for x in range(xsize): screen[x - 1][ysize].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
-        text(0,ysize,f"🎮:[wasd]")
-        text(0,ysize + 1,f"")
+        text(0,ysize,f"🎮:[wasd, k]")
+        text(0,ysize + 1,f"K to exit")
         text(0,ysize + 2,f"Player: {name}")
         screen[xsize - 1][ysize].bg_color = -1
 
@@ -224,7 +236,10 @@ def game(xsize, ysize, mappath, startpos=[9,5],name="user"):
     running = True
     while running:
         render(xsize,ysize)
-        kp = subprocess.check_output("read -n 1 keypress; echo $keypress", shell=True).decode("utf-8").strip() # 2 bash commands
+        kp = getinp()
+        if kp.strip().lower() == "k":
+            running = False
+            exit()
         if len(kp) < 1: kp = " "
 
         oldpos = copy.deepcopy(MainPlayerPos)
@@ -319,15 +334,15 @@ def editor(xsize, ysize, mappath, selectmode=False):
         for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 6
         for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 6
         if not selectmode:
-            text(0,ysize,f"🎮:[wasd,qe,+-,cr,p] layer: {layernum}")
+            text(0,ysize,f"🎮:[wasd,qe,+-,cr,p,k] layer: {layernum}")
             text(0,ysize + 1,f"(c)olEdit: {editingCollisions}  | X: {Cursor[0]} Y: {Cursor[1]}")
-            text(0,ysize + 2,f"doo(r)Edit: {editingDoors} | P to save")
+            text(0,ysize + 2,f"doo(r)Edit: {editingDoors}|p=save k=exit")
             screen[xsize - 1][ysize].bg_color = -1
         else:
             for x in range(xsize): screen[x - 1][ysize].bg_color = 5
             for x in range(xsize): screen[x - 1][ysize + 1].bg_color = 5
             for x in range(xsize): screen[x - 1][ysize + 2].bg_color = 5
-            text(0,ysize,f"🎮:[wasd, ENTER] layer: {layernum}")
+            text(0,ysize,f"🎮:[wasd, SPACE] layer: {layernum}")
             text(0,ysize + 1,f"SELECT MODE!")
             screen[xsize - 1][ysize].bg_color = -1
 
@@ -336,7 +351,10 @@ def editor(xsize, ysize, mappath, selectmode=False):
     running = True
     while running:
         render(xsize,ysize)
-        kp = subprocess.check_output("read -n 1 keypress; echo $keypress", shell=True).decode("utf-8").strip() # 2 bash commands
+        kp = getinp()
+        if kp.strip().lower() == "k":
+            running = False
+            exit()
         if len(kp) < 1: kp = " "
 
         if len(editorMap["paint"]) - 1 < layernum: editorMap["paint"].append(gen2DArray(xsize,ysize,0))

@@ -39,6 +39,7 @@ select_character() {
             echo "Coordinates: ($x, $y)"
             echo "Inventory: $inventory"
             echo "Map: $mapname"
+            echo "Press ENTER to start!"
             python main.py game "$name" $x $y "$mapname" "$inventory"
         fi
     fi
