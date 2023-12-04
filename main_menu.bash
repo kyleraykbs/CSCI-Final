@@ -56,7 +56,7 @@ function display_menu {
   echo -e "\e[1;32m╠════════════════════════════╝\e[0m"
 
   option_count=0
-  for option_text in "Open Editor" "Open Game" "Exit"; do
+  for option_text in "Open Editor" "Open Game" "Arcade" "Exit"; do
     option_count=$((option_count + 1))
     if [ $option_count -eq $selected_option ]; then
       echo -e "\e[1;33m║  \e[0m\e[1;36m$option_count. $option_text\e[0m\e[1;33m\e[0m"
@@ -85,7 +85,8 @@ function handle_option {
         python main.py editor "$selected_map"
         clear;;
     2) echo -e "\e[1;36mOpen Game\e[0m"; select_character; clear;;
-    3) echo -e "\e[1;36mExit\e[0m"; exit;;
+    3) perl snake.pl;;
+    4) echo -e "\e[1;36mExit\e[0m"; exit;;
   esac
   sleep 1
 }
