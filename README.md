@@ -1,0 +1,1 @@
+My 2022 Fall semester CSCI project, following many arbitrary requirements. This wasn't a very serious project as many of the requirements were arbitrary and hard to collect into a single simple ane elegant project.
